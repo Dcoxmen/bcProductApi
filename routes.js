@@ -5,17 +5,19 @@ const router = express.Router();
 router.get('/', (req, res) => {
  
   const query = `
-  query{
+  query Products {
     products {
       id
       name
       price
       brand_id
-      categories
+      categories:in
       sku
-      images
+      images {
+        url
+        thumbnail_url
+      }
     }
-
   }
   `;
     

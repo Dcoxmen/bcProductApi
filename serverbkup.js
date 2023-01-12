@@ -1,15 +1,15 @@
 const express = require('express');
 const { ApolloServer, gql } = require('apollo-server-express');
-const request = require('request');
 const axios = require('axios');
 const routes = require('./routes');
 
 const app = express();
 const port = 4000;
 
-const clientId = '3mt7gi7jswdubvsppfapvm4x0gmsf7t';
-const storeHash = '4ccc5gfp0c';
-const accessToken = 'rmw835hec1nturvs9784ffetp0rkr4u';
+// const clientId = '3mt7gi7jswdubvsppfapvm4x0gmsf7t';
+// const storeHash = '4ccc5gfp0c';
+// const accessToken = 'rmw835hec1nturvs9784ffetp0rkr4u';
+
 
 const typeDefs = gql`
 type Query {
