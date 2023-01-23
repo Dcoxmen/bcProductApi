@@ -6,49 +6,114 @@ const routes = require('./routes');
 const app = express();
 const port = 4000;
 
-// const clientId = '3mt7gi7jswdubvsppfapvm4x0gmsf7t';
-// const storeHash = '4ccc5gfp0c';
-// const accessToken = 'rmw835hec1nturvs9784ffetp0rkr4u';
-
+const clientId = 'clientId';
+const storeHash = 'storeHash';
+const accessToken = 'accessToken';
 
 const typeDefs = gql`
 type Query {
-  products: [Product!]
+  products(
+    search: String
+    brand_id: ID
+    custom_fields: [String]
+    custom_fields_name: [String]
+    sku: String
+  ): [Product!]
 }
+
 
 type Product {
   id: ID!
   name: String!
   price: Float
   brand_id: ID
-  categories: [Int]
+  custom_fields:[CustomField]
   sku: String
-  images: [String]
+  images: [ProductImage]
+}
+
+type ProductImage {
+  url: String
+  thumbnail_url: String
+}
+type CustomField {
+  name: String
+  value: String
 }
 
 `;
 
 const resolvers = {
   Query: {
-    products: (_, __, { headers }) => {
-      // Set the options for the request
-      const options = {
-        url: `https://api.bigcommerce.com/stores/${storeHash}/v3/catalog/products`,
-        headers: headers, 
-      }
+    products: async (_, { search, brand_id, custom_fields, custom_fields_value, custom_fields_name, sku }, { headers }) => {
+      const queries = {};
+      if (search) queries.keyword = search;
+      if (brand_id) queries.brand_id = brand_id;
+      if (custom_fields) queries.custom_fields = custom_fields.join(',');
+      if (sku) queries.sku = sku;
 
-      return new Promise((resolve, reject) => {
-        request(options, (error, response, body) => {
-          if (!error && response.statusCode == 200) {
-            const products = JSON.parse(body).data;
-            resolve(products);
-          } else {
-            reject(error);
-          }
+      try {
+        // Make the initial API call to retrieve the list of products
+        const response = await axios({
+          method: 'get',
+          url: `https://api.bigcommerce.com/stores/${storeHash}/v3/catalog/products?include=custom_fields`,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Auth-Client': clientId,
+            'X-Auth-Token': accessToken,
+            ...headers
+          },
+          params: queries
         });
-      });
-    }
 
+        let products = response.data.data;
+        
+        // filter the products based on custom_fields_value, custom_fields_name and custom_fields
+        if (custom_fields_value || custom_fields_name || custom_fields) {
+          products = products.filter(product => {
+            for (const customField of product.custom_fields) {
+              if ((custom_fields_value && custom_fields_value.includes(customField.value)) 
+              && (custom_fields_name && custom_fields_name.includes(customField.name)) 
+              && (custom_fields && custom_fields.includes(customField.custom_field_id)) ) {
+                return true;
+              }
+            }
+            return false;
+          });
+        }
+
+        // Add the custom_fields data to each product
+        const promises = products.map(async (product) => {
+          product.custom_fields = product.custom_fields.map(customField => {
+            return {
+              name: customField.name,
+              value: customField.value
+            };
+          });
+          // Make an additional API call to retrieve the images for each product
+          const images = await axios({
+            method: 'get',
+            url: `https://api.bigcommerce.com/stores/${storeHash}/v3/catalog/products/${product.id}/images`,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Auth-Client': clientId,
+              'X-Auth-Token': accessToken,
+              ...headers
+            }
+          });
+          product.images = images.data.data.map(image => {
+            return {
+              url: image.url_standard,
+              thumbnail_url: image.url_thumbnail
+            };
+          });
+        });
+        await Promise.all(promises);
+        return products;
+      } catch (error) {
+        throw new Error(error);
+      }
+    }
   }
 };
 
@@ -76,4 +141,3 @@ app.use('/', routes);
 app.listen(port, () => {
   console.log(`Server listening at ${port}`);
 });
-
