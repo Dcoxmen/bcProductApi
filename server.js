@@ -6,9 +6,9 @@ const routes = require('./routes');
 const app = express();
 const port = 4000;
 
-const clientId = '3mt7gi7jswdubvsppfapvm4x0gmsf7t';
-const storeHash = '4ccc5gfp0c';
-const accessToken = 'rmw835hec1nturvs9784ffetp0rkr4u';
+const clientId = 'clientid';
+const storeHash = 'storehash';
+const accessToken = 'accesstoken';
 
 const typeDefs = gql`
 type Query {
